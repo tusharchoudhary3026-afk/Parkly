@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "parkly-api"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1", "uvicorn[standard]>=0.30,<1", "sqlalchemy[asyncio]>=2.0,<3",
+  "asyncpg>=0.29,<1", "alembic>=1.13,<2", "pydantic-settings>=2.4,<3",
+  "passlib[argon2]>=1.7,<2", "python-jose[cryptography]>=3.3,<4", "python-multipart>=0.0.9",
+  "pandas>=2.2,<3", "email-validator>=2,<3"
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9", "pytest-asyncio>=0.24,<1", "httpx>=0.27,<1", "ruff>=0.6,<1", "mypy>=1.11,<2"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI uses dependency injection in parameter defaults as its standard route pattern.
+"app/main.py" = ["B008"]
+"app/security.py" = ["B008"]
+# These modules are imported or run with `python -m`, not as OS executables.
+"**/*.py" = ["EXE002"]

@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: parkly
+      POSTGRES_PASSWORD: parkly
+      POSTGRES_DB: parkly
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parkly"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  testdb:
+    image: postgres:16-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: parkly
+      POSTGRES_PASSWORD: parkly
+      POSTGRES_DB: parkly_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parkly -d parkly_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  api:
+    build:
+      context: ./backend
+      target: runtime
+    env_file: .env
+    ports: ["8000:8000"]
+    volumes:
+      - ./backend:/srv
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["sh", "-c", "alembic upgrade head && python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+  web:
+    build: ./frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports: ["3000:3000"]
+    depends_on: [api]
+  api-test:
+    profiles: ["test"]
+    build:
+      context: ./backend
+      target: test
+    environment:
+      DATABASE_URL: postgresql+asyncpg://parkly:parkly@testdb:5432/parkly_test
+      JWT_SECRET: test-secret-not-for-production
+      EVENT_API_KEY: test-event-key
+      PYTHONPATH: /srv
+      APP_ENV: test
+    depends_on:
+      testdb:
+        condition: service_healthy
+    command: ["sh", "-c", "alembic upgrade head && python -m pytest -q -s"]
+volumes:
+  pgdata:
